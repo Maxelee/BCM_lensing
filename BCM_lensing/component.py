@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 from nbodykit.cosmology import Planck15
 from scipy.special import erf
+from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy.optimize import minimize
-from utils import *
+from BCM_lensing.utils import *
 
 class BCM_COMPONENT:
     """
@@ -170,8 +171,8 @@ class BG(BCM_COMPONENT):
             M = self.m_200
 
         r_s = self.r_200/self.c
-        x_b = self.r_200/np.sqrt(5) - self.r_200/20
-        x_a = self.r_200/np.sqrt(5) + self.r_200/20
+        x_b = self.r_200/r_s/np.sqrt(5) - .040
+        x_a = self.r_200/r_s/np.sqrt(5) + .040
         below = (x_b**-1 * np.log(1+x_b))**self.gamma_c
         above =  x_a**-1 *(1+x_a)**-2
 
@@ -371,7 +372,7 @@ class RDM(BCM_COMPONENT):
         the density profile of relaxed dark matter
         """
 
-        rho= 1/(4*np.pi*ri**2) *  self.Mass_fd(ri, masses, xi)
+        rho= 1/(4*np.pi*ri**2) *  self._Mass_fd(ri, masses, xi)
         if clipped:
             return self.clip(rho, ri)
         return rho

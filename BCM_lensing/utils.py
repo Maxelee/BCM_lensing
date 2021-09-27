@@ -59,3 +59,7 @@ def make_cartesian(spherical, center):
     y = make_y(r, theta, phi)
     z = make_z(r, theta)
     return np.array([x, y, z]).T + center
+
+
+def chi2(model, obs, sig):
+    return np.sum((model-obs)**2/sig**2)

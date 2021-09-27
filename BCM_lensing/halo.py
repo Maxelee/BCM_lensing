@@ -2,7 +2,8 @@ import illustris_python as il
 import numpy as np
 import pandas as pd
 from nbodykit.cosmology import Planck15
-from utils import *
+from BCM_lensing.utils import *
+from scipy.optimize import minimize
 
 class Halo:
 
@@ -18,7 +19,7 @@ class Halo:
     """
 
     def __init__(self, halo_num, group_df, groupPos, subgroupPos, 
-                 particle_mass=4.8e-2, resolution=50, basePath='./Illustris-3-Dark/output', 
+                 particle_mass=4.8e-2, resolution=50, basePath='../Illustris-3-Dark/output', 
                  snap_num=135, grav_softening=5.7):
 
         self.halo_num    = halo_num
@@ -39,16 +40,14 @@ class Halo:
         self.sg_COM      = subgroupPos[self.sub]
         self.first_sub   = group_df.GroupFirstSub[halo_num]
 
-        self.run_density()
-
     def _get_halos(self):
 
         """
         extract m_200 and r_200 from the data frame and return the dm particles
         """
         halo_dm = il.snapshot.loadHalo(self.basePath,self.snap_num, self.halo_num,'dm')
-        self.r_200 = self.group_df.Group_R_Crit200[halo_num]
-        self.m_200 = self.group_df.Group_M_Crit200[halo_num]
+        self.r_200 = self.group_df.Group_R_Crit200[self.halo_num]
+        self.m_200 = self.group_df.Group_M_Crit200[self.halo_num]
         return halo_dm
 
     def _get_subhalos(self):
@@ -103,7 +102,7 @@ class Halo:
                 rho=0
         return rho
 
-    def nfw_density(self, r, c=None, rho_s=None, clipped=False):
+    def nfw_density(self, r, c=None, rho_s=None, clipped=True):
         """
         Compute the NFW predicted density for a given radius concentration factor
         and density factor. clipping the density past the r_200 mark is optional
@@ -124,7 +123,12 @@ class Halo:
         """
         fit NFW profile to density profile
         """
-        self.c,self.rho_s = minimize(self.minimize_func, (3, 1e-4), args=(self.halo_density, np.sqrt(self.errors), self.ri, self.r_200))['x']
+        try:
+            self.c,self.rho_s = minimize(self.minimize_func, (3, 1e-4), args=(self.halo_density, np.sqrt(self.errors), self.ri, self.r_200))['x']
+        except AttributeError:
+            print('Running with Mult=10. Run halo.run_density(mult=N) if you wish to change mult factor')
+            self.run_density(mult=10)
+            self.c,self.rho_s = minimize(self.minimize_func, (3, 1e-4), args=(self.halo_density, np.sqrt(self.errors), self.ri, self.r_200))['x']
 
     def minimize_func(self, ps, obs, sig, r, r_200):
         c, rho_s = ps
