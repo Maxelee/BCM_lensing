@@ -1,7 +1,4 @@
-import illustris_python as il
 import numpy as np
-import pandas as pd
-from nbodykit.cosmology import Planck15
 from scipy.special import erf
 from scipy.interpolate import interp1d
 from scipy.integrate import quad

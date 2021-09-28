@@ -1,7 +1,4 @@
-import illustris_python as il
 import numpy as np
-import pandas as pd
-from nbodykit.cosmology import Planck15
 from BCM_lensing.utils import *
 from scipy.optimize import minimize
 
@@ -11,53 +8,32 @@ class Halo:
     The halo class interfaces with Illustris-3-Dark and supplies key halo/subhalo information.
     This class is meant to interact with a single halo which means obtaining the group pos
     and the subgroup positions as well as the key group characteristics in group_df must be
-    obtained first. 
+    obtained first.
 
     The Halo class automaticly computes a density profile at spherical shells in logspace
     from 3 * grav_softening to 10 r_200 of the halo with spacing determined by the resolution
-    kwd. This density can be fit with the nfw fitting routine outlined here. 
+    kwd. This density can be fit with the nfw fitting routine outlined here.
     """
 
-    def __init__(self, halo_num, group_df, groupPos, subgroupPos, 
-                 particle_mass=4.8e-2, resolution=50, basePath='../Illustris-3-Dark/output', 
-                 snap_num=135, grav_softening=5.7):
+    def __init__(self, subhalo_dm, subhalo_dm_r,
+                 particle_mass=4.8e-2, resolution=50, grav_softening=5.7):
 
-        self.halo_num    = halo_num
-        self.group_df    = group_df
-        self.groupPos    = groupPos
-        self.subgroupPos = subgroupPos
+        self.halo_num    = 110
+        self.g_COM    = np.array([63562.457, 61393.29 , 19083.664])
+        self.sg_COM = np.array([63562.457, 61393.29 , 19083.664])
+
         self.rho_s = 0
         self.c     = 0
 
         self.particle_mass = particle_mass
         self.resolution = resolution
-        self.basePath = basePath
-        self.snap_num = snap_num
         self.grav_softening = grav_softening
+        self.r_200 = 377.46823
+        self.m_200 = 1709.328
 
-        self.g_COM       = groupPos[halo_num]
-        self.sub = group_df.GroupFirstSub[halo_num]
-        self.sg_COM      = subgroupPos[self.sub]
-        self.first_sub   = group_df.GroupFirstSub[halo_num]
+        self.subhalo_dm_r = subhalo_dm_r
+        self.subhalo_dm   = subhalo_dm
 
-    def _get_halos(self):
-
-        """
-        extract m_200 and r_200 from the data frame and return the dm particles
-        """
-        halo_dm = il.snapshot.loadHalo(self.basePath,self.snap_num, self.halo_num,'dm')
-        self.r_200 = self.group_df.Group_R_Crit200[self.halo_num]
-        self.m_200 = self.group_df.Group_M_Crit200[self.halo_num]
-        return halo_dm
-
-    def _get_subhalos(self):
-        """
-        extract the dark matter particles for a subhalo and convert the positions to
-        radius
-        """
-        subhalo_dm = il.snapshot.loadSubhalo(self.basePath,self.snap_num,self.sub,'dm')
-        subhalo_dm_r = make_r(subhalo_dm['Coordinates'], self.sg_COM)
-        return subhalo_dm, subhalo_dm_r
 
     def _build_density(self, subhalo_dm_r, mult=10):
         """
@@ -76,20 +52,12 @@ class Halo:
             errors.append(d**2/particle_count)
         return np.array(halo_density), ri, np.array(errors), np.array(N)
 
-    def run_density(self, mult):
+    def run_density(self, mult=10):
         """
         This function runs the density function and stores dark matter particles
         """
-        halo_dm = self._get_halos()
-        halo_dm_r = make_r(halo_dm['Coordinates'], self.g_COM)
 
-
-        self.subhalo_dm, subhalo_dm_r_over = self._get_subhalos()
-        subhalo_dm_r = subhalo_dm_r_over[subhalo_dm_r_over<self.r_200]
-
-        self.m_200 = self.particle_mass * len(subhalo_dm_r)
-
-        self.halo_density, self.ri, self.errors, self.masses = self._build_density(subhalo_dm_r, mult=mult)
+        self.halo_density, self.ri, self.errors, self.masses = self._build_density(self.subhalo_dm_r, mult=mult)
 
     def clip(self, rho, r):
         """
@@ -137,3 +105,6 @@ class Halo:
 
     def params(self):
         return self.c, self.rho_s
+
+
+
