@@ -101,9 +101,9 @@ class CG(BCM_COMPONENT):
     Central Galaxy / Stellar component of the Baryonic correction model. Inherets from BCM_COMPONENT class, 
     And returns analytic density and mass calculations. 
     """
-    def __init__(self, r_200, m_200, c, rho_s, R_h_mult=0.015, *kwargs):
+    def __init__(self, r_200, m_200, c, rho_s, R_h_mult=0.015, **kwargs):
 
-        BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s)
+        BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s, **kwargs)
 
         self.R_h = R_h_mult * self.r_200
 
@@ -131,9 +131,9 @@ class BG(BCM_COMPONENT):
     """
 
 
-    def __init__(self, r_200, m_200, c, rho_s, *kwargs):
+    def __init__(self, r_200, m_200, c, rho_s, **kwargs):
 
-        BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s, *kwargs)
+        BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s, **kwargs)
 
         self.gamma_c = self._gamma()
         self.int_params = []

@@ -84,8 +84,8 @@ class Halo:
         halo_dm_r = make_r(halo_dm['Coordinates'], self.g_COM)
 
 
-        self.subhalo_dm, subhalo_dm_r_over = self._get_subhalos()
-        subhalo_dm_r = subhalo_dm_r_over[subhalo_dm_r_over<self.r_200]
+        self.subhalo_dm, self.subhalo_dm_r_over = self._get_subhalos()
+        subhalo_dm_r = self.subhalo_dm_r_over[self.subhalo_dm_r_over<self.r_200]
 
         self.m_200 = self.particle_mass * len(subhalo_dm_r)
 
