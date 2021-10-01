@@ -52,7 +52,10 @@ def BCM_pos(halo_num, group_df, groupPos, subgroupPos, resolution=20):
     res[i] = dr
 
 
-    # Convert back to cartesian
-    new_cartesian = ((halo.subhalo_dm_r_over + res)/halo.subhalo_dm_r_over )[:, np.newaxis] * halo.subhalo_dm['Coordinates']
+    dm = halo.dm['Coordinates']
+    delta = np.zeros(len(dm))
+    delta[:len(res)] = res
 
-    return new_cartesian
+    # Convert back to cartesian
+    new_cartesian = ((halo.halo_dm_r + delta)/halo.halo_dm_r )[:, np.newaxis] * dm
+    return new_cartesian 
