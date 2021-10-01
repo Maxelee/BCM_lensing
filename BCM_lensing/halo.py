@@ -40,15 +40,10 @@ class Halo:
         self.sg_COM      = subgroupPos[self.sub]
         self.first_sub   = group_df.GroupFirstSub[halo_num]
 
-    def _get_halos(self):
-
-        """
-        extract m_200 and r_200 from the data frame and return the dm particles
-        """
-        halo_dm = il.snapshot.loadHalo(self.basePath,self.snap_num, self.halo_num,'dm')
+        self.dm = il.snapshot.loadHalo(self.basePath,self.snap_num, self.halo_num,'dm')
         self.r_200 = self.group_df.Group_R_Crit200[self.halo_num]
         self.m_200 = self.group_df.Group_M_Crit200[self.halo_num]
-        return halo_dm
+
 
     def _get_subhalos(self):
         """
@@ -80,8 +75,7 @@ class Halo:
         """
         This function runs the density function and stores dark matter particles
         """
-        halo_dm = self._get_halos()
-        halo_dm_r = make_r(halo_dm['Coordinates'], self.g_COM)
+        self.halo_dm_r = make_r(self.dm['Coordinates'], self.g_COM)
 
 
         self.subhalo_dm, self.subhalo_dm_r_over = self._get_subhalos()
