@@ -59,7 +59,7 @@ class Halo:
         Build the density profile for the subhalo. This function computes the poison error, 
         the mass of the halo at each radius, and the density itself. 
         """
-        ri = np.logspace(np.log10(self.grav_softening*2), np.log10(self.r_200), self.resolution)
+        ri = np.logspace(np.log10(self.grav_softening*2), np.log10(self.r_200*mult), self.resolution)
         dri = np.diff(ri)
         
         p_count = []
@@ -99,16 +99,11 @@ class Halo:
     def build_rho_s(self, c):
         return c**3 * self.m_200 / (4*np.pi * self.r_200**3) * (np.log(1+c) - c/(1+c)) ** -1
 
-    def nfw_density(self, r, c=None, rho_s=None, clipped=True):
+    def nfw_density(self, r, c=1, rho_s=1e-3, clipped=False):
         """
         Compute the NFW predicted density for a given radius concentration factor
         and density factor. clipping the density past the r_200 mark is optional
         """
-        if c== None:
-            c = self.c
-        if rho_s==None:
-            rho_s = self.rho_s
-
         rs = self.r_200/c
 
         try:
@@ -125,16 +120,19 @@ class Halo:
         """
         fit NFW profile to density profile
         """
-        cs = np.logspace(.1, 1, 20)
-        rhos = self.build_rho_s(cs)
-        tbl = np.array([integrate_shells(self.ri ,(self.nfw_density, [c, rho])) for c, rho in zip(cs, rhos)])/self.m_200
+        cs = np.logspace(.1, 1, 5)
+        rho_s = self.build_rho_s(cs)
+        tbl = np.array([integrate_shells(self.ri ,(self.nfw_density, [c, rho])) for c, rho in zip(cs, rho_s)])/self.m_200
+        p_count = []
         p_percent = self.p_count/len(self.subhalo_dm_r)
-        error = tbl * (1-tbl) / self.p_count
-        chi2 = np.sum((tbl - p_percent)**2/error, axis=-1)
+        error = tbl**2  / len(self.subhalo_dm_r)
 
-        self.c    = cs[np.argmin(chi2)]
-        self.rhos = rhos[np.argmin(chi2)]
-        self.errors = error[np.argmin(chi2)]
+
+
+        chi2 = np.sum((tbl - p_percent)**2/error, axis=-1)
+        self.c = cs[np.argmin(chi2)]
+        self.rho_s = rho_s[np.argmin(chi2)]
+        self.error = error[np.argmin(chi2)]
 
     def params(self):
         return self.c, self.rho_s
