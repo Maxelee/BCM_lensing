@@ -28,6 +28,8 @@ class Halo:
         self.subgroupPos = subgroupPos
         self.rho_s = 0
         self.c     = 0
+        self.r_200 = group_df.Group_R_Crit200[self.halo_num]
+        self.m_200 = group_df.Group_M_Crit200[self.halo_num]
 
         self.particle_mass = particle_mass
         self.resolution = resolution
@@ -59,31 +61,30 @@ class Halo:
         Build the density profile for the subhalo. This function computes the poison error, 
         the mass of the halo at each radius, and the density itself. 
         """
-        ri = np.logspace(np.log10(self.grav_softening*3), np.log10(mult*self.r_200), self.resolution)
+        ri = np.logspace(np.log10(self.grav_softening*2), np.log10(self.r_200*mult), self.resolution)
+        dri = np.diff(ri)
+        p_count = []
         halo_density = []
-        errors = []
-        N = []
-        for rii in ri:
-            particle_count = np.sum(subhalo_dm_r<rii)
-            N.append(particle_count*self.particle_mass)
-            d = density(rii, self.particle_mass * particle_count)
-            halo_density.append(d)
-            errors.append(d**2/particle_count)
-        return np.array(halo_density), ri, np.array(errors), np.array(N)
+        for i, rii in enumerate(ri[1:]):
+            count = np.sum((ri[i]<subhalo_dm_r) & (subhalo_dm_r<=rii))
+            p_count.append(count)
+        p_count = np.array(p_count)
+        halo_density = den(ri[1:], dri, p_count*self.particle_mass)
+        return np.array(halo_density), ri, p_count
+
 
     def run_density(self, mult):
         """
         This function runs the density function and stores dark matter particles
         """
         self.halo_dm_r = make_r(self.dm['Coordinates'], self.g_COM)
-
-
         self.subhalo_dm, self.subhalo_dm_r_over = self._get_subhalos()
+
         subhalo_dm_r = self.subhalo_dm_r_over[self.subhalo_dm_r_over<self.r_200]
-
         self.m_200 = self.particle_mass * len(subhalo_dm_r)
-
-        self.halo_density, self.ri, self.errors, self.masses = self._build_density(subhalo_dm_r, mult=mult)
+        self.halo_density, self.ri, self.p_count = self._build_density(subhalo_dm_r, mult=mult)
+        self.masses = np.sum(subhalo_dm_r[:, np.newaxis]<self.ri, axis=0)
+        self.subhalo_dm_r = subhalo_dm_r
 
     def clip(self, rho, r):
         """
@@ -96,18 +97,21 @@ class Halo:
                 rho=0
         return rho
 
-    def nfw_density(self, r, c=None, rho_s=None, clipped=True):
+    def build_rho_s(self, c):
+        return c**3 * self.m_200 / (4*np.pi * self.r_200**3) * (np.log(1+c) - c/(1+c)) ** -1
+
+    def nfw_density(self, r, c=1, rho_s=1e-3, clipped=False):
         """
         Compute the NFW predicted density for a given radius concentration factor
         and density factor. clipping the density past the r_200 mark is optional
         """
-        if c== None:
-            c = self.c
-        if rho_s==None:
-            rho_s = self.rho_s
-
         rs = self.r_200/c
-        x = r/rs
+
+        try:
+            x = r/rs
+        except:
+            x = np.einsum('i, j->ij', r, 1/rs)
+
         rho = rho_s *x**-1 * (1+x)**-2
         if clipped:
             return self.clip(rho, r)
@@ -117,17 +121,19 @@ class Halo:
         """
         fit NFW profile to density profile
         """
-        try:
-            self.c,self.rho_s = minimize(self.minimize_func, (3, 1e-4), args=(self.halo_density, np.sqrt(self.errors), self.ri, self.r_200))['x']
-        except AttributeError:
-            print('Running with Mult=10. Run halo.run_density(mult=N) if you wish to change mult factor')
-            self.run_density(mult=10)
-            self.c,self.rho_s = minimize(self.minimize_func, (3, 1e-4), args=(self.halo_density, np.sqrt(self.errors), self.ri, self.r_200))['x']
+        cs = np.logspace(.1, 1, 5)
+        rho_s = self.build_rho_s(cs)
+        tbl = np.array([integrate_shells(self.ri ,(self.nfw_density, [c, rho])) for c, rho in zip(cs, rho_s)])/self.m_200
+        p_count = []
+        p_percent = self.p_count/len(self.subhalo_dm_r)
+        error = tbl**2  / len(self.subhalo_dm_r)
 
-    def minimize_func(self, ps, obs, sig, r, r_200):
-        c, rho_s = ps
-        model = self.nfw_density(r, c, rho_s)
-        return chi2(model, obs, sig)
+
+
+        chi2 = np.sum((tbl - p_percent)**2/error, axis=-1)
+        self.c = cs[np.argmin(chi2)]
+        self.rho_s = rho_s[np.argmin(chi2)]
+        self.error = error[np.argmin(chi2)]
 
     def params(self):
         return self.c, self.rho_s
