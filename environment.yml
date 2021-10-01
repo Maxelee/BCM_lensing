@@ -1,0 +1,14 @@
+name: BCMLensing_env
+
+channels:
+  - bccp
+  - defaults
+dependencies:
+  - python=3.6
+  - nbodykit
+  - numpy
+  - scipy
+  - pandas
+  - pip
+  - pip:
+    - absl-py
