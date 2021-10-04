@@ -83,7 +83,7 @@ class Halo:
         subhalo_dm_r = self.subhalo_dm_r_over[self.subhalo_dm_r_over<self.r_200]
         self.m_200 = self.particle_mass * len(subhalo_dm_r)
         self.halo_density, self.ri, self.p_count = self._build_density(subhalo_dm_r, mult=mult)
-        self.masses = np.sum(subhalo_dm_r[:, np.newaxis]<self.ri, axis=0)
+        self.masses = np.sum(subhalo_dm_r[:, np.newaxis]<self.ri, axis=0) * self.particle_mass
         self.subhalo_dm_r = subhalo_dm_r
 
     def clip(self, rho, r):
@@ -121,7 +121,7 @@ class Halo:
         """
         fit NFW profile to density profile
         """
-        cs = np.logspace(.1, 1, 5)
+        cs = np.logspace(.1, 1, 20)
         rho_s = self.build_rho_s(cs)
         tbl = np.array([integrate_shells(self.ri ,(self.nfw_density, [c, rho])) for c, rho in zip(cs, rho_s)])/self.m_200
         p_count = []
