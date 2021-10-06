@@ -55,7 +55,7 @@ def BCM_pos(halo_num, group_df, groupPos, subgroupPos, resolution=20):
     dm = halo.dm['Coordinates']
     delta = np.zeros(len(dm))
     delta[:len(res)] = res
-
+    correction = ((halo.halo_dm_r + delta)/halo.halo_dm_r )[:, np.newaxis]
     # Convert back to cartesian
-    new_cartesian = ((halo.halo_dm_r + delta)/halo.halo_dm_r )[:, np.newaxis] * dm
-    return new_cartesian 
+    new_cartesian = correction * (dm - halo.sg_COM) + halo.sg.COM
+    return new_cartesian
