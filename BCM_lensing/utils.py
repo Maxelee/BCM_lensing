@@ -63,3 +63,13 @@ def make_cartesian(spherical, center):
 
 def chi2(model, obs, sig):
     return np.sum((model-obs)**2/sig**2)
+
+def den(r, dr, dm):
+    return dm / (4 * np.pi * r**2 * dr)
+
+def integrate_shells(rs, f_params):
+    Ms = []
+    for i,r in enumerate(rs[1:]):
+        M = integrate_over_r(r, f_params, rs[i])
+        Ms.append(M)
+    return np.array(Ms)

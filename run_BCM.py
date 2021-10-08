@@ -1,7 +1,7 @@
-from BCM_lensing.halo import Halo
 import os
 from BCM_lensing.component import CG, BG, EG, RDM
 from BCM_lensing.bcm_pos import BCM_POS
+from BCM_lensing.halo import Halo
 from BCM_lensing.utils import *
 import time
 import numpy as np
@@ -24,7 +24,11 @@ flags.DEFINE_string('basePath', '/burg/astro/users/mel2260/Illustris-3-Dark/outp
 flags.DEFINE_string('outPath', '/burg/astro/users/mel2260/BCM_results/', 'Path to save Data')
 flags.DEFINE_string('constraint', 'BCM', 'constraint for identifiying outputs')
 flags.DEFINE_integer('snapNum', 135, 'Snapshot corresponding to redshift')
-
+flags.DEFINE_integer('num_halos', 8, 'Snapshot corresponding to redshift')
+flags.DEFINE_float('M1', 86.0,   'M1 bcm parameter in 10^10 M_sun h^-1')
+flags.DEFINE_float('MC', 3300.0, 'MC bcm parameter in 10^10 M_sun h^-1')
+flags.DEFINE_float('eta', 0.54, 'eta bcm parameter')
+flags.DEFINE_float('beta', 0.23, 'beta bcm parameter')
 
 
 def main(argv):
@@ -44,23 +48,24 @@ def main(argv):
     """ --------------------------------------------CORRECTION----------------------------"""
     bcm_pos = np.ones((1, 3))
     counter = 0
+    bcm_start = time.time()
 
-    start = time.time()
-    for halo_num in range(200):
-        h_coords, ids= BCM_POS(group_df, halo_num,groupPos, subgroupPos, FLAGS.basePath, constraint=FLAGS.constraint)
+    for halo_num in range(1200):
+        h_coords, ids= BCM_POS(group_df, halo_num,groupPos, subgroupPos, 
+                FLAGS.basePath, constraint=FLAGS.constraint, 
+                M1=FLAGS.M1, MC=FLAGS.MC, eta=FLAGS.eta, beta=FLAGS.beta)
         bcm_pos = np.concatenate((bcm_pos, h_coords))
         counter += len(h_coords)
-    if rank == 0:
-        print(f'BCM finished in {time.time()-start} seconds')
-    bcm_pos  = bcm_pos[1:]
 
+    print(f'\nBCM finished in {time.time()-bcm_start} seconds')
+    bcm_pos  = bcm_pos[1:]
     start = time.time()
     dat = il.snapshot.loadSubset(FLAGS.basePath, FLAGS.snapNum, 'dm',  'Coordinates')
     dat[:counter] = bcm_pos
     dat /= 1000
     dat %= 75
     dat[np.isnan(dat)] =0
-    print(f'DF manipulation took {time.time()-start} seconds')
+    print(f'manipulation took {time.time()-start} seconds')
 
     start = time.time()
     pm = ParticleMesh(Nmesh=[455]*3, BoxSize=[75, 75, 75], resampler='cic')
@@ -76,7 +81,7 @@ def main(argv):
 
     print(f'Particle Mesh operation took {time.time()-start} seconds')
 
-    address = FLAGS.outPath + '/snapdir_' + str(FLAGS.snapNum).zfill(3) + '/' 
+    address  = '%s/snapdir_%i/BCM_coordinates_M1-%2.1f_MC-%3.1f_eta-%1.3f_beta-%1.3f/'%(FLAGS.outPath, FLAGS.snapNum, FLAGS.M1, FLAGS.MC, FLAGS.eta, FLAGS.beta)
     if not os.path.exists(address):
         os.makedirs(address)
     address_BCM = address + FLAGS.constraint + 'map_Nmesh' + str(pm.Nmesh[0])
@@ -87,7 +92,7 @@ def main(argv):
 
     """-------------------------------------------DMO-----------------------------"""
 
-    address_DMO = address + 'DMO' + 'map_Nmesh' + str(pm.Nmesh[0])
+    address_DMO = '%s/snapdir_%i/DMO/DMOmap_Nmesh%i'%(FLAGS.outPath, FLAGS.snapNum, pm.Nmesh[0])
     try:
         IllustrisMap_DMO = BigFileMesh(address_DMO, dataset='Field').to_real_field()
     except:
