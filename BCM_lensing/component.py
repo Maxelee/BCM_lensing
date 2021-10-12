@@ -348,30 +348,30 @@ class RDM(BCM_COMPONENT):
                 xi_i = xi
                 converged = self._check_convergence(diff)
             self.xis.append(xi_i)
+        self.xi_func = interp1d(ri, np.array(self.xis)/self.norm, fill_value='extrapolate')
 
         return np.array(self.xis)/self.norm
 
     def Mass(self, ri, masses, xi):
         """
-        For Mass computation, build an interpolation function from 
+        For Mass computation, build an interpolation function from
         Dark matter only masses to radial shells. Then plug in the radii from RDM
         corresponding to ri*xi to find the masses of relaxed dark matter halo shells.
 
         Use the Try Except block to only initialize the interpolation function one time
         """
 
-        try:
-            return self.f_RDM() * self.M_DMO_interp(ri*xi)
-        except:
-            self.M_DMO_interp = interp1d(ri, masses, fill_value='extrapolate', bounds_error=False)
         return self.f_RDM()* self.M_DMO_interp(ri*xi)
+
+    def build_MassFunc(self, ri, masses):
+        self.M_DMO_interp = interp1d(ri, masses, fill_value='extrapolate', bounds_error=False)
 
     def density(self, ri, masses, xi, delta=1e-3, clipped=True):
         """
         Compute the derivative of the mass function and normalize by a volume term to findt
         the density profile of relaxed dark matter
         """
-
+        self.build_MassFunc(ri,masses)
         rho= 1/(4*np.pi*ri**2) *  self._Mass_fd(ri, masses, xi)
         if clipped:
             return self.clip(rho, ri)
