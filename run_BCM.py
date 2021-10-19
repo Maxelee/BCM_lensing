@@ -5,10 +5,8 @@ from BCM_lensing.halo import Halo
 from BCM_lensing.utils import *
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from nbodykit.lab import *
-from nbodykit.cosmology import Planck15
 from scipy.interpolate import interp1d
 from absl import app, flags
 from mpi4py import MPI
@@ -24,7 +22,7 @@ flags.DEFINE_string('basePath', '/burg/astro/users/mel2260/Illustris-3-Dark/outp
 flags.DEFINE_string('outPath', '/burg/astro/users/mel2260/BCM_results/', 'Path to save Data')
 flags.DEFINE_string('constraint', 'BCM', 'constraint for identifiying outputs')
 flags.DEFINE_integer('snapNum', 135, 'Snapshot corresponding to redshift')
-flags.DEFINE_integer('num_halos', 600, 'Snapshot corresponding to redshift')
+flags.DEFINE_integer('num_halos', 100, 'number of halos to use') # We should turn this into a mass threshold
 flags.DEFINE_float('M1', 86.3,   'M1 bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('MC', 3300.0, 'MC bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('eta', 0.54, 'eta bcm parameter')
@@ -50,10 +48,10 @@ def main(argv):
     bcm_pos = np.ones((1, 3))
     counter = 0
     bcm_start = time.time()
-    
+    print('starting')    
     # Do the BCM on each of halos
     for halo_num in range(FLAGS.num_halos):
-        h_coords, ids= BCM_POS(group_df, halo_num,groupPos, subgroupPos, 
+        h_coords= BCM_POS(group_df, halo_num,groupPos, subgroupPos, 
                 FLAGS.basePath, constraint=FLAGS.constraint, 
                 M1=FLAGS.M1, MC=FLAGS.MC, eta=FLAGS.eta, beta=FLAGS.beta)
         bcm_pos = np.concatenate((bcm_pos, h_coords))
@@ -110,7 +108,7 @@ def main(argv):
         IllustrisMap_DMO.paint(dat, mass=mass1, layout=None, hold=False)
         del dat, mass1
 
-#        FieldMesh(IllustrisMap_DMO).save(address_DMO)
+        FieldMesh(IllustrisMap_DMO).save(address_DMO)
 
         P_DMO = FFTPower(IllustrisMap_DMO, mode='1d').save(address_DMO +'_p.json')
 

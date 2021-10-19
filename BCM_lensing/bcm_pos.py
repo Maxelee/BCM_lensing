@@ -6,13 +6,13 @@ from scipy.interpolate import interp1d
 import warnings; warnings.simplefilter('ignore')
 
 def BCM_POS( group_df, halo_num, groupPos, subgroupPos, 
-        basePath='./', constraint='BCM', resolution=50,  snapNum=135, 
+        basePath='./', constraint='BCM', resolution=40,  snapNum=135, 
         M1=86.3, MC=3.3e3, eta=.54, beta=.12):
     
     
     halo = Halo(halo_num, group_df, groupPos, subgroupPos, resolution=resolution, basePath=basePath)
 
-    halo.run_density(mult=10)
+    halo.run_density(mult=12)
 
     # Fit NFW parameters
     halo.nfw_fit()
@@ -27,16 +27,15 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
     # Generate the BCM components
     if constraint=='CG':
         cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        M_BCM = cg.Mass(r_sorted) + (1 - cg.f_CG()) * true_masses
+        M_BCM = cg.Mass(halo.ri) + (1 - cg.f_CG) * halo.masses
 
     elif constraint=='BG':
         bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        M_BCM = bg.Mass(r_sorted) + (1 - bg.f_BG()) * true_masses
+        M_BCM = bg.Mass(halo.ri) + (1 - bg.f_BG) * halo.masses
 
     elif constraint=='EG':
-        true_masses[r_sorted>halo.r_200] = halo.m_200 * (1-eg.f_EG()) 
         eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        M_BCM = eg.Mass(r_sorted) + (1-eg.f_EG()) * true_masses
+        M_BCM = eg.Mass(halo.ri) + (1-eg.f_EG) * halo.masses
 
     elif constraint=='RDM':
         cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s)
@@ -45,11 +44,10 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
         rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta)
 
         # Compute the relaxation parameter xi for each r
-        _ = rdm.run_xi(halo.ri, halo.masses)
-        xi = rdm.xi_func(r_sorted)
-        rdm.build_MassFunc(r_sorted, true_masses)
+        xi = rdm.run_xi(halo.ri, halo.masses)
+        rdm.build_MassFunc(halo.ri, halo.masses)
         
-        M_BCM = rdm.Mass(r_sorted, true_masses, xi) + (1 - rdm.f_RDM()) * true_masses
+        M_BCM = rdm.Mass(halo.ri, halo.masses, xi) + (1 - rdm.f_RDM) * halo.masses
 
     elif constraint=='BCM':
         cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
@@ -58,20 +56,17 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
         rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta)
 
         # Compute the relaxation parameter xi for each r
-        _ = rdm.run_xi(halo.ri, halo.masses)
-        xi = rdm.xi_func(r_sorted)
-        rdm.build_MassFunc(r_sorted, true_masses)
+        xi = rdm.run_xi(halo.ri, halo.masses)
+        rdm.build_MassFunc(halo.ri, halo.masses)
 
         # Calculate the BCM mass profile
-        M_BCM = cg.Mass(r_sorted)+ bg.Mass(r_sorted)+ rdm.Mass(r_sorted, true_masses, xi)+eg.Mass(r_sorted)
-        M_BCM[r_sorted>halo.r_200] =M_BCM[r_sorted<halo.r_200][-1]
-        M_BCM += eg.Mass(r_sorted)
+        M_BCM = cg.Mass(halo.ri)+ bg.Mass(halo.ri)+ rdm.Mass(halo.ri, halo.masses, xi)+eg.Mass(halo.ri)
 
     else:
         raise ValueError(f'Must use CG, BG, EG, RDM, or BCM as constraint not {constraint}')
 
     # Interpolate the BCM to each of the particle r's
-    M_BCM_interp = interp1d(M_BCM, r_sorted, fill_value='extrapolate', assume_sorted=True)
+    M_BCM_interp = interp1d(M_BCM, halo.ri, fill_value='extrapolate', assume_sorted=True)
 
 
     # Invert to find r_BCM
@@ -90,11 +85,10 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
 
     # Apply corrections to full dm particle positions
     dm = halo.dm['Coordinates']
-    delta = np.zeros(len(dm))
-    delta[:len(res)] = res
+    delta = np.pad(res, (0, len(dm) - len(res)))
     correction = ((halo.halo_dm_r + delta)/halo.halo_dm_r )[:, np.newaxis]
 
     # Convert back to cartesian
     new_cartesian =  correction * (dm - halo.sg_COM) + halo.sg_COM
 
-    return new_cartesian, halo.dm['ParticleIDs']
+    return new_cartesian 
