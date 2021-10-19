@@ -6,17 +6,16 @@ from scipy.interpolate import interp1d
 import warnings; warnings.simplefilter('ignore')
 
 def BCM_POS( group_df, halo_num, groupPos, subgroupPos, 
-        basePath='./', constraint='BCM', resolution=40,  snapNum=135, 
+        basePath='./', constraint='BCM', resolution=20,  snapNum=135, 
         M1=86.3, MC=3.3e3, eta=.54, beta=.12):
     
     
     halo = Halo(halo_num, group_df, groupPos, subgroupPos, resolution=resolution, basePath=basePath)
-
     halo.run_density(mult=12)
 
     # Fit NFW parameters
     halo.nfw_fit()
-
+    
     # Remember the order of r
     i = np.argsort(halo.subhalo_dm_r_over)
     r_sorted = halo.subhalo_dm_r_over[i]
@@ -67,7 +66,6 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
 
     # Interpolate the BCM to each of the particle r's
     M_BCM_interp = interp1d(M_BCM, halo.ri, fill_value='extrapolate', assume_sorted=True)
-
 
     # Invert to find r_BCM
     r_BCM = M_BCM_interp(true_masses)

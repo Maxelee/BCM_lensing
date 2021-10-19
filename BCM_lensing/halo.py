@@ -130,7 +130,6 @@ class Halo:
 
         # This should be ~1 for each c... If not we got problems!
         tbl = np.array([integrate_shells(ri ,(self.nfw_density, [c, rho])) for c, rho in zip(cs, rho_s)])/self.m_200
-        assert np.isclose(len(cs), np.sum(tbl), rtol=1e-1)
 
         p_percent = p_count/len(self.subhalo_dm_r)
         error = tbl**2  / len(self.subhalo_dm_r)

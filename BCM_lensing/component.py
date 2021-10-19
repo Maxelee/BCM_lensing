@@ -137,8 +137,6 @@ class BG(BCM_COMPONENT):
     Bound gas component of the Baryonic correction model. Inherets from BCM_COMPONENT class, 
     And returns analytic density and mass calculations. 
     """
-
-
     def __init__(self, r_200, m_200, c, rho_s,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
                  omega_b=0.0486, omega_m=0.3089037):
@@ -272,8 +270,6 @@ class RDM(BCM_COMPONENT):
     RDM has routines for fitting the RDM parameter xi, computing the mass, and taking the derivative
     of the mass equation using finite differencing to compute the density profile. 
     """
-
-
     def __init__(self,cg, bg, eg, a=0.3, n=2, tol=1e-2,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
                  omega_b=0.0486, omega_m=0.3089037):
@@ -352,6 +348,7 @@ class RDM(BCM_COMPONENT):
             self.xis.append(xi_i)
         self.xi_func = interp1d(ri, np.array(self.xis), fill_value='extrapolate')
 
+
         return np.array(self.xis)
 
     def Mass(self, ri, masses, xi):
@@ -360,8 +357,10 @@ class RDM(BCM_COMPONENT):
         Dark matter only masses to radial shells. Then plug in the radii from RDM
         corresponding to ri*xi to find the masses of relaxed dark matter halo shells.
         """
-
         return self.f_RDM* self.M_DMO_interp(ri/xi)
+
+    def build_MassFunc(self, ri, masses):
+        self.M_DMO_interp = interp1d(ri, masses, fill_value='extrapolate', bounds_error=False)
 
     def build_MassFunc(self, ri, masses):
         self.M_DMO_interp = interp1d(ri, masses, fill_value='extrapolate', bounds_error=False)
