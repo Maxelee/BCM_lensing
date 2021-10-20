@@ -107,7 +107,7 @@ class CG(BCM_COMPONENT):
     """
     def __init__(self, r_200, m_200, c, rho_s, R_h_mult=0.015,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0455, omega_m=0.272):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
@@ -139,7 +139,7 @@ class BG(BCM_COMPONENT):
     """
     def __init__(self, r_200, m_200, c, rho_s,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0455, omega_m=0.272):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
@@ -244,7 +244,7 @@ class EG(BCM_COMPONENT):
 
     def __init__(self, r_200, m_200, c, rho_s,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0455, omega_m=0.272):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
@@ -272,7 +272,7 @@ class RDM(BCM_COMPONENT):
     """
     def __init__(self,cg, bg, eg, a=0.3, n=2, tol=1e-2,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0455, omega_m=0.272):
 
         BCM_COMPONENT.__init__(self, cg.r_200, cg.m_200, cg.c, cg.rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
