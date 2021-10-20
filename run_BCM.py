@@ -12,6 +12,8 @@ from absl import app, flags
 from mpi4py import MPI
 import illustris_python as il
 from pmesh import ParticleMesh
+import glob
+import h5py
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -27,6 +29,9 @@ flags.DEFINE_float('M1', 86.3,   'M1 bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('MC', 3300.0, 'MC bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('eta', 0.54, 'eta bcm parameter')
 flags.DEFINE_float('beta', 0.12, 'beta bcm parameter')
+flags.DEFINE_boolean('power', True, 'compute power of correction or not')
+flags.DEFINE_boolean('DMO', False, 'compute power of DMO')
+
 
 
 def main(argv):
@@ -61,59 +66,83 @@ def main(argv):
 
     # Now replace the snapshots halos with BCM corrected halos
     bcm_pos  = bcm_pos[1:]
-    dat = il.snapshot.loadSubset(FLAGS.basePath, FLAGS.snapNum, 'dm',  'Coordinates')
-    dat[:counter] = bcm_pos
 
-    # Put in box coordinates (Mpc/h)
-    dat /= 1000
-    dat %= 75
-    dat[np.isnan(dat)] =0
-    
-    # Put into a particle mesh object for mapping and power spectrum
-    pm = ParticleMesh(Nmesh=[455]*3, BoxSize=[75, 75, 75], resampler='cic')
-    comm = pm.comm
-    mass1 = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(dat), op=MPI.SUM) * 4.8e-2
+    # Update the positions of hdf5 files
+    # First pull up all of the hdf5 files into a list
+    files = sorted(glob.glob(FLAGS.basePath+'_BCM/snapshot_135/*'))
 
+    counter = len(bcm_pos)
+    for f_name in files:
+        # Open a file and check that the length is shorter than the length of BCM
+        f = h5py.File(f_name, 'r+')
+        d = f['PartType1']['Coordinates']
+        l_d = len(d)
+        if counter > l_d:
+            start = len(bcm_pos) - counter
+            end   = start + l_d
+            d[...] = bcm_pos[start:end]
+            counter -=l_d
+        else:
+            start = len(bcm_pos) - counter
+            d = d[:l_d]
+            d[...] = bcm_pos[start:]
+        f.close()
 
-    IllustrisMap = pm.create(type="real")
-    IllustrisMap.paint(dat, mass=mass1, layout=None, hold=False)
-    del mass1, dat
+    if FLAGS.power:
+        dat = il.snapshot.loadSubset(FLAGS.basePath+'_BCM', FLAGS.snapNum, 'dm',  'Coordinates')
+        dat[:counter] = bcm_pos
 
-
-    address  = '%s/snapdir_%i/BCM_coordinates_M1-%2.1f_MC-%3.1f_eta-%1.3f_beta-%1.3f/'%(FLAGS.outPath, FLAGS.snapNum, FLAGS.M1, FLAGS.MC, FLAGS.eta, FLAGS.beta)
-    if not os.path.exists(address):
-        os.makedirs(address)
-    address_BCM = address + 'power/' + FLAGS.constraint + 'map_Nmesh' + str(pm.Nmesh[0])
-
-    # Dont need to save map rightnow, so save memory and dont output
-    #FieldMesh(IllustrisMap).save(address_BCM)
-
-    P = FFTPower(IllustrisMap, mode='1d').save(address_BCM +'_p.json')
-
-    """-------------------------------------------DMO-----------------------------"""
-
-    address_DMO = address + 'power/' +'DMOmap_Nmesh' + str(pm.Nmesh[0])
-
-    try:
-        IllustrisMap_DMO = BigFileMesh(address_DMO, dataset='Field').to_real_field()
-    except:
-
-        dat = il.snapshot.loadSubset(FLAGS.basePath, FLAGS.snapNum, 'dm',  'Coordinates')
+        # Put in box coordinates (Mpc/h)
         dat /= 1000
         dat %= 75
+        dat[np.isnan(dat)] =0
 
+        # Put into a particle mesh object for mapping and power spectrum
+        pm = ParticleMesh(Nmesh=[455]*3, BoxSize=[75, 75, 75], resampler='cic')
+        comm = pm.comm
         mass1 = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(dat), op=MPI.SUM) * 4.8e-2
 
-        IllustrisMap_DMO = pm.create(type="real")
-        IllustrisMap_DMO.paint(dat, mass=mass1, layout=None, hold=False)
-        del dat, mass1
 
-        FieldMesh(IllustrisMap_DMO).save(address_DMO)
+        IllustrisMap = pm.create(type="real")
+        IllustrisMap.paint(dat, mass=mass1, layout=None, hold=False)
+        del mass1, dat
 
-        P_DMO = FFTPower(IllustrisMap_DMO, mode='1d').save(address_DMO +'_p.json')
 
-    # Cross correlation coefficient incase this is a useful statistic
-    r_cc = FFTPower(IllustrisMap, second=IllustrisMap_DMO, mode='1d').save(address_BCM +'_rcc.json')
+        address  = '%s/snapdir_%i/BCM_coordinates_M1-%2.1f_MC-%3.1f_eta-%1.3f_beta-%1.3f/'%(FLAGS.outPath, FLAGS.snapNum, FLAGS.M1, FLAGS.MC, FLAGS.eta, FLAGS.beta)
+        if not os.path.exists(address):
+            os.makedirs(address)
+        address_BCM = address + 'power/' + FLAGS.constraint + 'map_Nmesh' + str(pm.Nmesh[0])
+
+        # Dont need to save map rightnow, so save memory and dont output
+        #FieldMesh(IllustrisMap).save(address_BCM)
+
+        P = FFTPower(IllustrisMap, mode='1d').save(address_BCM +'_p.json')
+
+    """-------------------------------------------DMO-----------------------------"""
+    if FLAGS.DMO:
+
+        address_DMO = address + 'power/' +'DMOmap_Nmesh' + str(pm.Nmesh[0])
+
+        try:
+            IllustrisMap_DMO = BigFileMesh(address_DMO, dataset='Field').to_real_field()
+        except:
+
+            dat = il.snapshot.loadSubset(FLAGS.basePath, FLAGS.snapNum, 'dm',  'Coordinates')
+            dat /= 1000
+            dat %= 75
+
+            mass1 = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(dat), op=MPI.SUM) * 4.8e-2
+
+            IllustrisMap_DMO = pm.create(type="real")
+            IllustrisMap_DMO.paint(dat, mass=mass1, layout=None, hold=False)
+            del dat, mass1
+
+            FieldMesh(IllustrisMap_DMO).save(address_DMO)
+
+            P_DMO = FFTPower(IllustrisMap_DMO, mode='1d').save(address_DMO +'_p.json')
+
+        # Cross correlation coefficient incase this is a useful statistic
+        r_cc = FFTPower(IllustrisMap, second=IllustrisMap_DMO, mode='1d').save(address_BCM +'_rcc.json')
 
 
 if __name__ == "__main__":
