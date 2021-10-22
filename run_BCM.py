@@ -27,6 +27,7 @@ flags.DEFINE_float('M1', 86.3,   'M1 bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('MC', 3300.0, 'MC bcm parameter in 10^10 M_sun h^-1')
 flags.DEFINE_float('eta', 0.54, 'eta bcm parameter')
 flags.DEFINE_float('beta', 0.12, 'beta bcm parameter')
+flags.DEFINE_float('z', 0.0, 'redshift of snapshot')
 
 
 def main(argv):
@@ -53,7 +54,7 @@ def main(argv):
     for halo_num in range(FLAGS.num_halos):
         h_coords= BCM_POS(group_df, halo_num,groupPos, subgroupPos, 
                 FLAGS.basePath, constraint=FLAGS.constraint, 
-                M1=FLAGS.M1, MC=FLAGS.MC, eta=FLAGS.eta, beta=FLAGS.beta)
+                M1=FLAGS.M1, MC=FLAGS.MC, eta=FLAGS.eta, beta=FLAGS.beta, z=FLAGS.z)
         bcm_pos = np.concatenate((bcm_pos, h_coords))
         counter += len(h_coords)
 

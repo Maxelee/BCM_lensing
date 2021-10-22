@@ -16,8 +16,7 @@ class BCM_COMPONENT:
     """
     def __init__(self, r_200, m_200, c, rho_s, 
                  M1=8.63e1, M_c=3.3e3, beta=0.12, eta=0.54,
-                 omega_b=0.0455, omega_m=0.272, 
-                 alpha = -1.779, delta = 4.394, gamma = 0.547, epsilon=0.023):
+                 omega_b=0.0455, omega_m=0.272, z=0):
 
         # Halo Parameters
         self.r_200   = r_200
@@ -26,7 +25,7 @@ class BCM_COMPONENT:
         self.rho_s   = rho_s
 
         # BCM Parameters
-        self.M1      = M1
+        self.M1      = M1_z(z, np.log10(M1))
         self.M_c     = M_c
         self.omega_b = omega_b
         self.omega_m = omega_m
@@ -34,10 +33,10 @@ class BCM_COMPONENT:
         self.eta     = eta
 
         # F parameters
-        self.alpha = alpha
-        self.delta = delta
-        self.gamma = gamma
-        self.epsilon =  epsilon
+        self.alpha = alpha_z(z)
+        self.delta = delta(z)
+        self.gamma = gamma_z(z)
+        self.epsilon =  epsilon_z(z)
         self.f_CG = self.build_f_CG()
         self.f_BG = self.build_f_BG()
         self.f_EG = self.build_f_EG()
@@ -100,6 +99,27 @@ class BCM_COMPONENT:
         res =  -np.log10(10**(self.alpha * x)+1) +self.delta  *(np.log10(1 + np.exp(x))**self.gamma)/(1 + np.exp(10**-x))
         return res
 
+    def nu_a(a):
+        return np.exp(-4 * a**2)
+
+    def M1_z(z, M10, M1a=-1.793, M1z=-0.251):
+        return 10 ** (M10 + (M1z * (get_a(z)-1) + M1z*z)*nu_a(get_a(z)))
+
+    def epsilon_z(z, epsilon0=np.log10(0.023), epsilona=-0.006, epsilona2=-0.119):
+        return 10**(epsilon0 + (epsilona * (get_a(z)-1)) * nu_a(get_a(z)) + epsilona2*(get_a(z)-1))
+
+    def alpha_z(z, alpha0=-1.779, alphaa=-0.731):
+        return alpha0 + (alphaa * (get_a(z)-1)) * nu_a(get_a(z))
+
+    def delta_z(z, delta0=4.394, deltaa=2.608, deltaz=-0.043):
+        return delta0 + (deltaa*(get_a(z)-1) + deltaz*z)*nu_a(get_a(z))
+
+    def gamma_z(z, gamma0=0.547, gammaa=1.319, gammaz=0.279):
+        return gamma0 + (gammaa*(get_a(z) - 1) +gammaz * z)*nu_a(get_a(z))
+
+    def get_a(z):
+        return 1/(1+z)
+
 class CG(BCM_COMPONENT):
     """
     Central Galaxy / Stellar component of the Baryonic correction model. Inherets from BCM_COMPONENT class, 
@@ -107,11 +127,11 @@ class CG(BCM_COMPONENT):
     """
     def __init__(self, r_200, m_200, c, rho_s, R_h_mult=0.015,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0486, omega_m=0.3089037, z=0):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
-                 omega_b=omega_b, omega_m=omega_m)
+                 omega_b=omega_b, omega_m=omega_m, z=z)
 
         self.R_h = R_h_mult * self.r_200
 
@@ -139,11 +159,11 @@ class BG(BCM_COMPONENT):
     """
     def __init__(self, r_200, m_200, c, rho_s,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0486, omega_m=0.3089037, z=0):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
-                 omega_b=omega_b, omega_m=omega_m)
+                 omega_b=omega_b, omega_m=omega_m, z=z)
 
         self.gamma_c = self._gamma()
         self.int_params = []
@@ -244,11 +264,11 @@ class EG(BCM_COMPONENT):
 
     def __init__(self, r_200, m_200, c, rho_s,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0486, omega_m=0.3089037, z=0):
 
         BCM_COMPONENT.__init__(self, r_200, m_200, c, rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
-                 omega_b=omega_b, omega_m=omega_m)
+                 omega_b=omega_b, omega_m=omega_m, z=z)
 
         self.r_esc = 1/2 * np.sqrt(200) * r_200
         self.r_ej = self.eta * .75 * self.r_esc
@@ -272,11 +292,11 @@ class RDM(BCM_COMPONENT):
     """
     def __init__(self,cg, bg, eg, a=0.3, n=2, tol=1e-2,
                  M1=8.6e1, M_c=3.3e3, beta=.12, eta=.54,
-                 omega_b=0.0486, omega_m=0.3089037):
+                 omega_b=0.0486, omega_m=0.3089037, z=0):
 
         BCM_COMPONENT.__init__(self, cg.r_200, cg.m_200, cg.c, cg.rho_s,
                  M1=M1,  M_c=M_c, beta=beta, eta=eta,
-                 omega_b=omega_b, omega_m=omega_m)
+                 omega_b=omega_b, omega_m=omega_m, z=z)
 
 
         # xi Minimization Parameters
