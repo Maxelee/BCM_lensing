@@ -25,7 +25,7 @@ class BCM_COMPONENT:
         self.rho_s   = rho_s
 
         # BCM Parameters
-        self.M1      = M1_z(z, np.log10(M1))
+        self.M1      = self.M1_z(z, np.log10(M1))
         self.M_c     = M_c
         self.omega_b = omega_b
         self.omega_m = omega_m
@@ -33,10 +33,10 @@ class BCM_COMPONENT:
         self.eta     = eta
 
         # F parameters
-        self.alpha = alpha_z(z)
-        self.delta = delta(z)
-        self.gamma = gamma_z(z)
-        self.epsilon =  epsilon_z(z)
+        self.alpha = self.alpha_z(z)
+        self.delta = self.delta_z(z)
+        self.gamma = self.gamma_z(z)
+        self.epsilon =  self.epsilon_z(z)
         self.f_CG = self.build_f_CG()
         self.f_BG = self.build_f_BG()
         self.f_EG = self.build_f_EG()
@@ -99,25 +99,25 @@ class BCM_COMPONENT:
         res =  -np.log10(10**(self.alpha * x)+1) +self.delta  *(np.log10(1 + np.exp(x))**self.gamma)/(1 + np.exp(10**-x))
         return res
 
-    def nu_a(a):
+    def nu_a(self, a):
         return np.exp(-4 * a**2)
 
-    def M1_z(z, M10, M1a=-1.793, M1z=-0.251):
-        return 10 ** (M10 + (M1z * (get_a(z)-1) + M1z*z)*nu_a(get_a(z)))
+    def M1_z(self, z, M10, M1a=-1.793, M1z=-0.251):
+        return 10 ** (M10 + (M1z * (self.get_a(z)-1) + M1z*z)*self.nu_a(self.get_a(z)))
 
-    def epsilon_z(z, epsilon0=np.log10(0.023), epsilona=-0.006, epsilona2=-0.119):
-        return 10**(epsilon0 + (epsilona * (get_a(z)-1)) * nu_a(get_a(z)) + epsilona2*(get_a(z)-1))
+    def epsilon_z(self, z, epsilon0=np.log10(0.023), epsilona=-0.006, epsilona2=-0.119):
+        return 10**(epsilon0 + (epsilona * (self.get_a(z)-1)) * self.nu_a(self.get_a(z)) + epsilona2*(self.get_a(z)-1))
 
-    def alpha_z(z, alpha0=-1.779, alphaa=-0.731):
-        return alpha0 + (alphaa * (get_a(z)-1)) * nu_a(get_a(z))
+    def alpha_z(self, z, alpha0=-1.779, alphaa=-0.731):
+        return alpha0 + (alphaa * (self.get_a(z)-1)) * self.nu_a(self.get_a(z))
 
-    def delta_z(z, delta0=4.394, deltaa=2.608, deltaz=-0.043):
-        return delta0 + (deltaa*(get_a(z)-1) + deltaz*z)*nu_a(get_a(z))
+    def delta_z(self, z, delta0=4.394, deltaa=2.608, deltaz=-0.043):
+        return delta0 + (deltaa*(self.get_a(z)-1) + deltaz*z)*self.nu_a(self.get_a(z))
 
-    def gamma_z(z, gamma0=0.547, gammaa=1.319, gammaz=0.279):
-        return gamma0 + (gammaa*(get_a(z) - 1) +gammaz * z)*nu_a(get_a(z))
+    def gamma_z(self, z, gamma0=0.547, gammaa=1.319, gammaz=0.279):
+        return gamma0 + (gammaa*(self.get_a(z) - 1) +gammaz * z)*self.nu_a(self.get_a(z))
 
-    def get_a(z):
+    def get_a(self, z):
         return 1/(1+z)
 
 class CG(BCM_COMPONENT):
