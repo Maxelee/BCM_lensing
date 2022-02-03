@@ -7,10 +7,11 @@ import warnings; warnings.simplefilter('ignore')
 
 def BCM_POS( group_df, halo_num, groupPos, subgroupPos, 
         basePath='./', constraint='BCM', resolution=20,  snapNum=135, 
-        M1=86.3, MC=3.3e3, eta=.54, beta=.12):
+        M1=86.3, MC=3.3e3, eta=.54, beta=.12, particle_mass=4.8e-2, z=0):
     
     
-    halo = Halo(halo_num, group_df, groupPos, subgroupPos, resolution=resolution, basePath=basePath)
+    halo = Halo(halo_num, group_df, groupPos, subgroupPos, resolution=resolution, basePath=basePath, 
+particle_mass=particle_mass, snap_num=snapNum)
     halo.run_density(mult=12)
 
     # Fit NFW parameters
@@ -25,22 +26,22 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
 
     # Generate the BCM components
     if constraint=='CG':
-        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
+        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
         M_BCM = cg.Mass(halo.ri) + (1 - cg.f_CG) * halo.masses
 
     elif constraint=='BG':
-        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
+        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
         M_BCM = bg.Mass(halo.ri) + (1 - bg.f_BG) * halo.masses
 
     elif constraint=='EG':
-        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
+        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
         M_BCM = eg.Mass(halo.ri) + (1-eg.f_EG) * halo.masses
 
     elif constraint=='RDM':
-        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s)
-        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s)
-        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s)
-        rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta)
+        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, z=z)
+        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, z=z)
+        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, z=z)
+        rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
 
         # Compute the relaxation parameter xi for each r
         xi = rdm.run_xi(halo.ri, halo.masses)
@@ -49,10 +50,10 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
         M_BCM = rdm.Mass(halo.ri, halo.masses, xi) + (1 - rdm.f_RDM) * halo.masses
 
     elif constraint=='BCM':
-        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta)
-        rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta)
+        cg = CG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
+        bg = BG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
+        eg = EG(halo.r_200, halo.m_200, halo.c, halo.rho_s, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
+        rdm = RDM(cg, bg, eg, M1=M1, M_c=MC, eta=eta, beta=beta, z=z)
 
         # Compute the relaxation parameter xi for each r
         xi = rdm.run_xi(halo.ri, halo.masses)
@@ -88,5 +89,8 @@ def BCM_POS( group_df, halo_num, groupPos, subgroupPos,
 
     # Convert back to cartesian
     new_cartesian =  correction * (dm - halo.sg_COM) + halo.sg_COM
+    new_cartesian = new_cartesian % 205000
+    new_cartesian[np.isnan(new_cartesian)] = dm[np.isnan(new_cartesian)]
+    new_cartesian[np.isinf(new_cartesian)] = dm[np.isinf(new_cartesian)]
 
     return new_cartesian 
